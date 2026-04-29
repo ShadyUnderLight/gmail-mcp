@@ -4,7 +4,7 @@
 
 ## 功能
 
-支持 23 个 MCP 工具，覆盖 Gmail 核心操作：
+支持 22 个 MCP 工具，覆盖 Gmail 核心操作：
 
 **查询**
 - `get_profile` — 获取邮箱资料（地址、邮件总数等）
@@ -31,7 +31,8 @@
 - `star_message` / `unstar_message` — 加星/取消星标
 - `archive_message` / `move_to_inbox` — 归档/移回收件箱
 - `trash_message` / `untrash_message` — 移入/恢复出垃圾箱
-- `delete_message` — 永久删除（不可恢复）
+
+> **注意**：`delete_message`（永久删除）**默认禁用**。永久删除需要 `https://mail.google.com/` 范围（敏感权限），本服务器未申请该范围，避免意外数据丢失。
 
 ## 快速开始
 
@@ -47,14 +48,23 @@
 
 方式一：环境变量（推荐）
 
-```bash
+**Windows (cmd):**
+```cmd
 set GMAIL_CLIENT_ID=your-client-id.apps.googleusercontent.com
 set GMAIL_CLIENT_SECRET=your-client-secret
 ```
 
+**macOS / Linux:**
+```bash
+export GMAIL_CLIENT_ID=your-client-id.apps.googleusercontent.com
+export GMAIL_CLIENT_SECRET=your-client-secret
+```
+
 方式二：凭据文件
 
-将下载的 `credentials.json` 放到 `%USERPROFILE%\.gmail-mcp\credentials.json`
+将下载的 `credentials.json` 放到：
+- Windows: `%USERPROFILE%\.gmail-mcp\credentials.json`
+- macOS/Linux: `~/.gmail-mcp/credentials.json`
 
 ### 3. 启动
 
@@ -65,11 +75,13 @@ npm install
 # 编译
 npm run build
 
-# 启动（首次会自动打开浏览器进行 OAuth 授权）
+# 启动（首次会在终端打印授权 URL）
 npm start
 ```
 
-首次运行会自动弹出浏览器进行 Google 账号授权。授权成功后，Token 会保存在 `%USERPROFILE%\.gmail-mcp\token.json`，后续启动无需重复授权。
+首次运行会在终端打印授权 URL，**不会自动打开浏览器**。请手动复制 URL 在浏览器中打开完成 Google 账号授权。
+
+授权成功后，Token 会保存在 `~/.gmail-mcp/token.json`，后续启动无需重复授权。
 
 如需重新授权，使用：
 
@@ -86,7 +98,7 @@ node dist/index.js --reauth
   "mcpServers": {
     "gmail": {
       "command": "node",
-      "args": ["D:/path/to/gmail-mcp/dist/index.js"]
+      "args": ["/path/to/gmail-mcp/dist/index.js"]
     }
   }
 }
@@ -102,14 +114,17 @@ node dist/index.js --reauth
 
 ## 权限范围
 
-使用 `gmail.modify` 范围，支持读写但不支持永久删除（delete 操作需额外确认）。如需更严格限制，可在 `src/auth.ts` 中调整 `SCOPES`。
+本服务器使用的 OAuth2 范围（定义在 `src/auth.ts`）：
 
-可选范围：
-- `gmail.readonly` — 只读
-- `gmail.send` — 仅发送
-- `gmail.labels` — 仅标签管理
-- `gmail.modify` — 读写（当前使用）
-- `gmail.full` — 完全访问（谨慎使用）
+- `gmail.modify` — 读写邮件、标签，支持发送（**默认使用**）
+- `gmail.compose` — 创建和发送草稿
+- `gmail.labels` — 创建和管理标签
+
+**未申请的范围：**
+- `https://mail.google.com/` — 完全访问（含永久删除），高危，默认不申请
+- `gmail.readonly` — 如需只读可自行切换
+
+> `delete_message` 因需要 `https://mail.google.com/` 范围，**默认已从工具列表中移除**。如需启用，需修改 `src/auth.ts` 中的 `SCOPES`、在 `src/tools.ts` 中恢复工具定义，并理解相应安全风险。
 
 ## 项目结构
 
