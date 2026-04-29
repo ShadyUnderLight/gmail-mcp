@@ -254,11 +254,6 @@ export async function untrashMessage(auth: OAuth2Client, id: string): Promise<Pa
   return parseMessage(data);
 }
 
-export async function deleteMessage(auth: OAuth2Client, id: string): Promise<void> {
-  const gmail = createGmail(auth);
-  await gmail.users.messages.delete({ userId: "me", id });
-}
-
 export async function getThread(auth: OAuth2Client, threadId: string, format: "full" | "metadata" | "minimal" = "full"): Promise<GmailThread> {
   const gmail = createGmail(auth);
   const { data } = await gmail.users.threads.get({
