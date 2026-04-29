@@ -1,5 +1,7 @@
 # Gmail MCP Server
 
+[![CI](https://github.com/ShadyUnderLight/gmail-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ShadyUnderLight/gmail-mcp/actions/workflows/ci.yml)
+
 让 AI 助手通过 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 读取、发送和管理你的 Gmail 邮箱。
 
 ## 功能
