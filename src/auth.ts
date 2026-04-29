@@ -11,6 +11,8 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.labels",
 ];
 
+const OAUTH_TIMEOUT_MS = 120_000;
+
 const TOKEN_DIR = path.join(
   process.env.HOME || process.env.USERPROFILE || ".",
   ".gmail-mcp"
@@ -91,7 +93,7 @@ async function initiateAuthFlow(oauth2Client: OAuth2Client): Promise<OAuth2Clien
   });
 
   const code = await new Promise<string>((resolve, reject) => {
-    const server = http.createServer(async (req, res) => {
+    const server = http.createServer((req, res) => {
       if (!req.url) return;
 
       const url = new URL(req.url, `http://localhost:${port}`);
@@ -102,6 +104,7 @@ async function initiateAuthFlow(oauth2Client: OAuth2Client): Promise<OAuth2Clien
       if (error) {
         res.writeHead(400, { "Content-Type": "text/html" });
         res.end(`<h1>Authorization Failed</h1><p>${error}</p><p>Please close this window and try again.</p>`);
+        server.close();
         reject(new Error(`OAuth error: ${error}`));
         return;
       }
@@ -109,6 +112,7 @@ async function initiateAuthFlow(oauth2Client: OAuth2Client): Promise<OAuth2Clien
       if (stateParam !== state) {
         res.writeHead(400, { "Content-Type": "text/html" });
         res.end("<h1>State mismatch</h1><p>Please try again.</p>");
+        server.close();
         reject(new Error("State mismatch in OAuth callback"));
         return;
       }
@@ -116,23 +120,32 @@ async function initiateAuthFlow(oauth2Client: OAuth2Client): Promise<OAuth2Clien
       if (codeParam) {
         res.writeHead(200, { "Content-Type": "text/html" });
         res.end("<h1>Authorization Successful!</h1><p>You can close this window and return to the terminal.</p>");
+        server.close();
         resolve(codeParam);
       }
     });
 
-    server.listen(port, "127.0.0.1", () => {
-      console.error("\n=== Gmail MCP Authorization Required ===");
-      console.error("  Opening browser for Gmail authorization...");
-      console.error(`  If browser doesn't open, visit this URL:\n  ${authUrl}\n`);
-      console.error(`  Waiting for authorization on http://localhost:${port}...\n`);
-    });
+    const timeout = setTimeout(() => {
+      server.close();
+      reject(new Error("Authorization timed out after 120 seconds. Please try again."));
+    }, OAUTH_TIMEOUT_MS);
 
+    server.on("close", () => clearTimeout(timeout));
     server.on("error", (err: NodeJS.ErrnoException) => {
+      clearTimeout(timeout);
       if (err.code === "EADDRINUSE") {
         reject(new Error(`Port ${port} is already in use. Set OAUTH_PORT env var to a different port.`));
       } else {
         reject(err);
       }
+    });
+
+    server.listen(port, "127.0.0.1", () => {
+      console.error("\n=== Gmail MCP Authorization Required ===");
+      console.error("  Visit the following URL in your browser to authorize:\n");
+      console.error(`  ${authUrl}\n`);
+      console.error(`  Waiting for authorization on http://localhost:${port}...`);
+      console.error("  (Timeout: 120 seconds)\n");
     });
   });
 

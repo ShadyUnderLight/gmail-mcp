@@ -12,6 +12,19 @@ function errorResponse(error: unknown): { content: Array<{ type: "text"; text: s
   return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };
 }
 
+const HEADER_FIELDS = ["to", "cc", "bcc", "subject"] as const;
+
+function validateHeaders(args: Record<string, unknown>): void {
+  for (const field of HEADER_FIELDS) {
+    const val = args[field];
+    if (typeof val === "string" && /[\r\n]/.test(val)) {
+      throw new Error(
+        `Invalid ${field}: header value must not contain CR or LF characters`
+      );
+    }
+  }
+}
+
 function formatMessageSummary(msg: ParsedMessage): string {
   return [
     `ID: ${msg.id}`,
@@ -89,6 +102,7 @@ export const toolDefinitions: Tool[] = [
       properties: {
         q: { type: "string", description: "Gmail search query (e.g. 'from:example@email.com after:2024/1/1 has:attachment')" },
         maxResults: { type: "number", description: "Maximum results to return (default: 20)" },
+        pageToken: { type: "string", description: "Page token for pagination" },
       },
       required: ["q"],
     },
@@ -250,15 +264,6 @@ export const toolDefinitions: Tool[] = [
     },
   },
   {
-    name: "delete_message",
-    description: "Permanently delete a message (cannot be undone)",
-    inputSchema: {
-      type: "object",
-      properties: { id: { type: "string", description: "Message ID" } },
-      required: ["id"],
-    },
-  },
-  {
     name: "get_thread",
     description: "Get a full email thread with all messages in conversation order",
     inputSchema: {
@@ -339,6 +344,7 @@ export async function handleToolCall(
           q: args.q as string,
           maxResults: (args.maxResults as number) || 20,
           labelIds: undefined,
+          pageToken: args.pageToken as string | undefined,
         });
         if (result.messages.length === 0) {
           return textResponse("No messages found matching your search.");
@@ -355,6 +361,7 @@ export async function handleToolCall(
       }
 
       case "send_message": {
+        validateHeaders(args);
         const sent = await gmail.sendMessage(auth, {
           to: args.to as string,
           subject: args.subject as string,
@@ -367,6 +374,7 @@ export async function handleToolCall(
       }
 
       case "create_draft": {
+        validateHeaders(args);
         const draft = await gmail.createDraft(auth, {
           to: args.to as string,
           subject: args.subject as string,
@@ -467,20 +475,16 @@ export async function handleToolCall(
         return textResponse(`Message ${msg.id} restored from trash.`);
       }
 
-      case "delete_message": {
-        await gmail.deleteMessage(auth, args.id as string);
-        return textResponse(`Message ${args.id} permanently deleted.`);
-      }
-
       case "get_thread": {
-        const thread = await gmail.getThread(auth, args.threadId as string, (args.format as "full" | "metadata" | "minimal") || "full");
+        const format = (args.format as "full" | "metadata" | "minimal") || "full";
+        const thread = await gmail.getThread(auth, args.threadId as string, format);
         const messages = thread.messages || [];
         if (messages.length === 0) {
           return textResponse("Thread is empty or not found.");
         }
         const parts = [`Thread: ${thread.id} (${messages.length} messages)\n`];
         for (const m of messages) {
-          const msg = await gmail.getMessage(auth, m.id!);
+          const msg = await gmail.getMessage(auth, m.id!, format);
           parts.push(`--- Message ${msg.id} ---\n${formatMessageFull(msg)}\n`);
         }
         return textResponse(parts.join("\n"));
