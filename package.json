@@ -12,16 +12,18 @@
     "start": "node dist/index.js",
     "dev": "npm run build && node dist/index.js",
     "lint": "tsc --noEmit",
+    "test": "vitest run",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
-    "googleapis": "^144.0.0",
-    "google-auth-library": "^9.15.0"
+    "google-auth-library": "^9.15.0",
+    "googleapis": "^144.0.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "typescript": "^5.7.0",
-    "@types/node": "^22.0.0"
+    "vitest": "^4.1.5"
   },
   "engines": {
     "node": ">=18"
