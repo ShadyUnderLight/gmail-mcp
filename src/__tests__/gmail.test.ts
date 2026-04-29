@@ -10,7 +10,6 @@ const {
   mockMessagesModify,
   mockMessagesTrash,
   mockMessagesUntrash,
-  mockMessagesDelete,
   mockAttachmentsGet,
   mockDraftsList,
   mockDraftsCreate,
@@ -28,7 +27,6 @@ const {
   mockMessagesModify: vi.fn(),
   mockMessagesTrash: vi.fn(),
   mockMessagesUntrash: vi.fn(),
-  mockMessagesDelete: vi.fn(),
   mockAttachmentsGet: vi.fn(),
   mockDraftsList: vi.fn(),
   mockDraftsCreate: vi.fn(),
@@ -52,7 +50,6 @@ vi.mock("googleapis", () => ({
           modify: mockMessagesModify,
           trash: mockMessagesTrash,
           untrash: mockMessagesUntrash,
-          delete: mockMessagesDelete,
           attachments: { get: mockAttachmentsGet },
         },
         drafts: {
